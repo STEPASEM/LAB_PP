@@ -1,5 +1,4 @@
 from datetime import datetime
-from typing import Dict, List
 
 # Базовые исключения
 class SocialNetworkError(Exception): pass
@@ -16,8 +15,8 @@ class User:
         self.username = username
         self.email = email
         self.data_registration = datetime.now()
-        self.post: List[Post] = []
-        self.comment: List[Comment] = []
+        self.post: list[Post] = []
+        self.comment: list[Comment] = []
 
     def validate(self, username: str, email: str):
         """Валидация пользователя"""
@@ -33,7 +32,7 @@ class User:
         self.comment.append(comment)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'User':
+    def from_dict(cls, data: dict) -> 'User':
         """Десериализация"""
         user = cls(
             data['user_id'],
@@ -43,7 +42,7 @@ class User:
         user.data_registration = datetime.fromisoformat(data['data_registration'])
         return user  # posts и comments восстановятся позже!
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Преобразование в словарь для сериализации"""
         return {
             'user_id': self.user_id,
@@ -66,7 +65,7 @@ class Post:
         self.user_id = user_id
         self.text = text
         self.created_at = datetime.now()
-        self.comment: List[Comment] = []
+        self.comment: list[Comment] = []
 
     def validate(self, text: str):
         """Валидация поста"""
@@ -77,7 +76,7 @@ class Post:
         self.comment.append(comment)
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Post':
+    def from_dict(cls, data: dict) -> 'Post':
         """Десериализация"""
         post = cls(
             data['post_id'],
@@ -87,7 +86,7 @@ class Post:
         post.created_at = datetime.fromisoformat(data['created_at'])
         return post  # comments восстановятся позже!
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Преобразование в словарь для сериализации"""
         return {
             'post_id': self.post_id,
@@ -117,7 +116,7 @@ class Comment:
             raise ValidationError("Комментарии не содержат текст")
 
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Comment':
+    def from_dict(cls, data: dict) -> 'Comment':
         """Десериализация"""
         comment = cls(
             data['comment_id'],
@@ -128,7 +127,7 @@ class Comment:
         comment.created_at = datetime.fromisoformat(data['created_at'])
         return comment
 
-    def to_dict(self) -> Dict:
+    def to_dict(self) -> dict:
         """Преобразование в словарь для сериализации"""
         return {
             'comment_id': self.comment_id,
@@ -141,11 +140,83 @@ class Comment:
     def __str__(self):
         return f"Comment({self.comment_id}): {self.text[:30]}..."
 
-
 class SocialNetwork:
     def __init__(self):
-        self.users: Dict[str, User] = {}
-        self.posts: Dict[str, Post] = {}
+        self.users: dict[str, User] = {}
+        self.posts: dict[str, Post] = {}
+        self.comments: dict[str, Comment] = {}
+
+    def add_user(self, user_id: int, username: str, email: str) -> User:
+        user = User(user_id, username, email)
+        self.users[user_id] = user
+        return user
+
+    def add_post(self, post_id: int, user_id: int, text: str) -> Post:
+        user = self.users[user_id]
+        post = Post(post_id, user_id, text)
+        self.posts[post_id] = post
+        user.add_post(post)
+        return post
+
+    def add_comment(self, comment_id: int, user_id: int, post_id: int, text: str) -> Comment:
+        user = self.users[user_id]
+        post = self.posts[post_id]
+        comment = Comment(comment_id, user_id, post_id, text)
+        self.comments[comment_id] = comment
+        post.add_comment(comment)
+        user.add_comment(comment)
+        return comment
+
+    @classmethod
+    def from_dict(cls, data: dict) -> 'SocialNetwork':
+        """Создание социальной сети из словаря"""
+        sn = cls()
+
+        # 1. Создаем все объекты
+        for user_data in data.get('users', {}).values():
+            user = User.from_dict(user_data)
+            sn.users[user.user_id] = user
+
+        for post_data in data.get('posts', {}).values():
+            post = Post.from_dict(post_data)
+            sn.posts[post.post_id] = post
+
+        for comment_data in data.get('comments', {}).values():
+            comment = Comment.from_dict(comment_data)
+            sn.comments[comment.comment_id] = comment
+
+        # 2. Восстанавливаем связи
+        sn._restore_relationships(data)
+
+        return sn
+
+    def _restore_relationships(self, data: dict):
+        """Восстановление всех связей между объектами"""
+        # Восстанавливаем комментарии к постам
+        for post_id, post_data in data.get('posts', {}).items():
+            post = self.posts[int(post_id)]
+            for comment_id in post_data.get('comments', []):
+                if comment_id in self.comments:
+                    post.add_comment(self.comments[comment_id])
+
+        # Восстанавливаем посты пользователей
+        for user_id, user_data in data.get('users', {}).items():
+            user = self.users[int(user_id)]
+            for post_id in user_data.get('posts', []):
+                if post_id in self.posts:
+                    user.add_post(self.posts[post_id])
+            for comment_id in user_data.get('comments', []):
+                if comment_id in self.comments:
+                    user.add_comment(self.comments[comment_id])
+
+    def to_dict(self) ->dict:
+        """Преобразование в словарь для сериализации"""
+        return {
+            'users': {user_id: user.to_dict() for user_id, user in self.users.items()},
+            'posts': {post_id: post.to_dict() for post_id, post in self.posts.items()},
+            'comments': {comment_id: comment.to_dict() for comment_id, comment in self.comments.items()}
+        }
+
 
 # Сериализация и десериализация
 class SocialNetworkSerializer:
