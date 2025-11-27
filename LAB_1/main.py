@@ -144,9 +144,9 @@ class Comment:
 
 class SocialNetwork:
     def __init__(self):
-        self.users: dict[str, User] = {}
-        self.posts: dict[str, Post] = {}
-        self.comments: dict[str, Comment] = {}
+        self.users: dict[int, User] = {}
+        self.posts: dict[int, Post] = {}
+        self.comments: dict[int, Comment] = {}
 
     def add_user(self, user_id: int, username: str, email: str) -> User:
         user = User(user_id, username, email)
@@ -247,6 +247,16 @@ class SocialNetworkSerializer:
             ET.SubElement(user_elem, "email").text = user.email
             ET.SubElement(user_elem, "data_registration").text = user.data_registration.isoformat()
 
+            # Сохраняем посты пользователя
+            posts_elem = ET.SubElement(user_elem, "posts")
+            for post in user.posts:
+                ET.SubElement(posts_elem, "post").text = str(post.post_id)
+
+            # Сохраняем комментарии пользователя
+            comments_elem = ET.SubElement(user_elem, "comments")
+            for comment in user.comments:
+                ET.SubElement(comments_elem, "comment").text = str(comment.comment_id)
+
         # Посты
         posts_elem = ET.SubElement(root, "posts")
         for post in social_network.posts.values():
@@ -255,6 +265,11 @@ class SocialNetworkSerializer:
             ET.SubElement(post_elem, "user_id").text = str(post.user_id)
             ET.SubElement(post_elem, "text").text = post.text
             ET.SubElement(post_elem, "created_at").text = post.created_at.isoformat()
+
+            # Сохраняем комментарии поста
+            comments_elem = ET.SubElement(post_elem, "comments")
+            for comment in post.comments:
+                ET.SubElement(comments_elem, "comment").text = str(comment.comment_id)
 
         # Комментарии
         comments_elem = ET.SubElement(root, "comments")
@@ -269,6 +284,97 @@ class SocialNetworkSerializer:
         tree = ET.ElementTree(root)
         tree.write(filename, encoding='utf-8', xml_declaration=True)
         print(f"✅ Данные сохранены в {filename}")
+
+    @staticmethod
+    def load_from_xml(filename: str) -> SocialNetwork:
+        """Загрузить социальную сеть из XML файла"""
+        try:
+            # Парсим XML
+            tree = ET.parse(filename)
+            root = tree.getroot()
+
+            # Создаем временные структуры для данных
+            users_data = {}
+            posts_data = {}
+            comments_data = {}
+
+            # Читаем пользователей
+            users_elem = root.find('users')
+            if users_elem is not None:
+                for user_elem in users_elem.findall('user'):
+                    user_id = int(user_elem.get('id'))
+
+                    # Читаем посты пользователя
+                    user_posts = []
+                    posts_elem = user_elem.find('posts')
+                    if posts_elem is not None:
+                        for post_elem in posts_elem.findall('post'):
+                            user_posts.append(int(post_elem.text))
+
+                    # Читаем комментарии пользователя
+                    user_comments = []
+                    comments_elem = user_elem.find('comments')
+                    if comments_elem is not None:
+                        for comment_elem in comments_elem.findall('comment'):
+                            user_comments.append(int(comment_elem.text))
+
+                    users_data[user_id] = {
+                        'user_id': user_id,
+                        'username': user_elem.find('username').text,
+                        'email': user_elem.find('email').text,
+                        'data_registration': user_elem.find('data_registration').text,
+                        'posts': user_posts,  # теперь заполняется!
+                        'comments': user_comments  # теперь заполняется!
+                    }
+
+            # Читаем посты
+            posts_elem = root.find('posts')
+            if posts_elem is not None:
+                for post_elem in posts_elem.findall('post'):
+                    post_id = int(post_elem.get('id'))
+
+                    # Читаем комментарии поста
+                    post_comments = []
+                    comments_elem = post_elem.find('comments')
+                    if comments_elem is not None:
+                        for comment_elem in comments_elem.findall('comment'):
+                            post_comments.append(int(comment_elem.text))
+
+                    posts_data[post_id] = {
+                        'post_id': post_id,
+                        'user_id': int(post_elem.find('user_id').text),
+                        'text': post_elem.find('text').text,
+                        'created_at': post_elem.find('created_at').text,
+                        'comments': post_comments  # теперь заполняется!
+                    }
+
+            # Читаем комментарии
+            comments_elem = root.find('comments')
+            if comments_elem is not None:
+                for comment_elem in comments_elem.findall('comment'):
+                    comment_id = int(comment_elem.get('id'))
+                    comments_data[comment_id] = {
+                        'comment_id': comment_id,
+                        'user_id': int(comment_elem.find('user_id').text),
+                        'post_id': int(comment_elem.find('post_id').text),
+                        'text': comment_elem.find('text').text,
+                        'created_at': comment_elem.find('created_at').text
+                    }
+
+            # Собираем все данные в структуру, совместимую с JSON форматом
+            data = {
+                'users': {user_id: user_data for user_id, user_data in users_data.items()},
+                'posts': {post_id: post_data for post_id, post_data in posts_data.items()},
+                'comments': {comment_id: comment_data for comment_id, comment_data in comments_data.items()}
+            }
+
+            print(f"✅ Данные загружены из {filename}")
+            return SocialNetwork.from_dict(data)
+
+        except ET.ParseError as e:
+            raise SocialNetworkError(f"Ошибка парсинга XML: {e}")
+        except Exception as e:
+            raise SocialNetworkError(f"Ошибка при загрузке из XML: {e}")
 
 def main():
     """Демонстрация работы"""
@@ -294,15 +400,15 @@ def main():
         SocialNetworkSerializer.save_to_xml(sn, "social_network_simple.xml")
 
         # Загрузка
-        sn_loaded = SocialNetworkSerializer.load_from_xml("social_network.xml")
+        sn_loaded = SocialNetworkSerializer.load_from_xml("social_network_simple.xml")
         print(
             f"Загружено: {len(sn_loaded.users)} пользователей, {len(sn_loaded.posts)} постов, {len(sn_loaded.comments)} комментариев")
 
         # Проверка связей
         user1_loaded = sn_loaded.users[1]
         post1_loaded = sn_loaded.posts[101]
-        print(f"У пользователя {user1_loaded.username}: {len(user1_loaded.posts)} постов")
-        print(f"У поста {post1_loaded.post_id}: {len(post1_loaded.comments)} комментариев")
+        print(f"У пользователя {user1_loaded.username}: {len(user1_loaded.posts)} пост(-ов)")
+        print(f"У поста {post1_loaded.post_id}: {len(post1_loaded.comments)} комментарий(-ев)")
 
         print("\n✅ Всё работает!")
 

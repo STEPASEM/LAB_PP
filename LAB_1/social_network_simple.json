@@ -1,0 +1,64 @@
+{
+  "users": {
+    "1": {
+      "user_id": 1,
+      "username": "ivan_petrov",
+      "email": "ivan@example.com",
+      "data_registration": "2025-11-27T17:39:44.145297",
+      "posts": [
+        101
+      ],
+      "comments": [
+        1002
+      ]
+    },
+    "2": {
+      "user_id": 2,
+      "username": "maria_ivanova",
+      "email": "maria@example.com",
+      "data_registration": "2025-11-27T17:39:44.145307",
+      "posts": [
+        102
+      ],
+      "comments": [
+        1001
+      ]
+    }
+  },
+  "posts": {
+    "101": {
+      "post_id": 101,
+      "user_id": 1,
+      "text": "Мой первый пост в социальной сети!",
+      "created_at": "2025-11-27T17:39:44.145313",
+      "comments": [
+        1001
+      ]
+    },
+    "102": {
+      "post_id": 102,
+      "user_id": 2,
+      "text": "Прекрасный день для прогулки в парке",
+      "created_at": "2025-11-27T17:39:44.145319",
+      "comments": [
+        1002
+      ]
+    }
+  },
+  "comments": {
+    "1001": {
+      "comment_id": 1001,
+      "user_id": 2,
+      "post_id": 101,
+      "text": "Отличный пост!",
+      "created_at": "2025-11-27T17:39:44.145325"
+    },
+    "1002": {
+      "comment_id": 1002,
+      "user_id": 1,
+      "post_id": 102,
+      "text": "Согласен, отличная погода!",
+      "created_at": "2025-11-27T17:39:44.145330"
+    }
+  }
+}
