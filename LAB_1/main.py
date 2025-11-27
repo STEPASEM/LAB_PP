@@ -1,3 +1,5 @@
+import json
+import xml.etree.ElementTree as ET
 from datetime import datetime
 
 # Базовые исключения
@@ -15,8 +17,8 @@ class User:
         self.username = username
         self.email = email
         self.data_registration = datetime.now()
-        self.post: list[Post] = []
-        self.comment: list[Comment] = []
+        self.posts: list[Post] = []
+        self.comments: list[Comment] = []
 
     def validate(self, username: str, email: str):
         """Валидация пользователя"""
@@ -26,10 +28,10 @@ class User:
             raise ValidationError("Пользователь не содержит email")
 
     def add_post(self, post: 'Post'):
-        self.post.append(post)
+        self.posts.append(post)
 
     def add_comment(self, comment: 'Comment'):
-        self.comment.append(comment)
+        self.comments.append(comment)
 
     @classmethod
     def from_dict(cls, data: dict) -> 'User':
@@ -65,7 +67,7 @@ class Post:
         self.user_id = user_id
         self.text = text
         self.created_at = datetime.now()
-        self.comment: list[Comment] = []
+        self.comments: list[Comment] = []
 
     def validate(self, text: str):
         """Валидация поста"""
@@ -73,7 +75,7 @@ class Post:
             raise ValidationError("Пост не содержит текст")
 
     def add_comment(self, comment: 'Comment'):
-        self.comment.append(comment)
+        self.comments.append(comment)
 
     @classmethod
     def from_dict(cls, data: dict) -> 'Post':
@@ -217,10 +219,96 @@ class SocialNetwork:
             'comments': {comment_id: comment.to_dict() for comment_id, comment in self.comments.items()}
         }
 
-
 # Сериализация и десериализация
 class SocialNetworkSerializer:
-    pass
+    @staticmethod
+    def save_to_json(social_network: SocialNetwork, filename: str):
+        with open(filename, 'w', encoding='utf-8') as f:
+            json.dump(social_network.to_dict(), f, indent=2, ensure_ascii=False)
+        print(f"✅ Данные сохранены в {filename}")
+
+    @staticmethod
+    def load_from_json(filename: str) -> SocialNetwork:
+        with open(filename, 'r', encoding='utf-8') as f:
+            data = json.load(f)
+        print(f"✅ Данные загружены из {filename}")
+        return SocialNetwork.from_dict(data)
+
+    @staticmethod
+    def save_to_xml(social_network: SocialNetwork, filename: str):
+        root = ET.Element("social_network")
+
+        # Пользователи
+        users_elem = ET.SubElement(root, "users")
+        for user in social_network.users.values():
+            user_elem = ET.SubElement(users_elem, "user")
+            user_elem.set("id", str(user.user_id))
+            ET.SubElement(user_elem, "username").text = user.username
+            ET.SubElement(user_elem, "email").text = user.email
+            ET.SubElement(user_elem, "data_registration").text = user.data_registration.isoformat()
+
+        # Посты
+        posts_elem = ET.SubElement(root, "posts")
+        for post in social_network.posts.values():
+            post_elem = ET.SubElement(posts_elem, "post")
+            post_elem.set("id", str(post.post_id))
+            ET.SubElement(post_elem, "user_id").text = str(post.user_id)
+            ET.SubElement(post_elem, "text").text = post.text
+            ET.SubElement(post_elem, "created_at").text = post.created_at.isoformat()
+
+        # Комментарии
+        comments_elem = ET.SubElement(root, "comments")
+        for comment in social_network.comments.values():
+            comment_elem = ET.SubElement(comments_elem, "comment")
+            comment_elem.set("id", str(comment.comment_id))
+            ET.SubElement(comment_elem, "user_id").text = str(comment.user_id)
+            ET.SubElement(comment_elem, "post_id").text = str(comment.post_id)
+            ET.SubElement(comment_elem, "text").text = comment.text
+            ET.SubElement(comment_elem, "created_at").text = comment.created_at.isoformat()
+
+        tree = ET.ElementTree(root)
+        tree.write(filename, encoding='utf-8', xml_declaration=True)
+        print(f"✅ Данные сохранены в {filename}")
 
 def main():
-    pass
+    """Демонстрация работы"""
+    try:
+        # Создание социальной сети
+        sn = SocialNetwork()
+
+        print("=== СОЗДАНИЕ ДАННЫХ ===")
+        user1 = sn.add_user(1, "ivan_petrov", "ivan@example.com")
+        user2 = sn.add_user(2, "maria_ivanova", "maria@example.com")
+
+        post1 = sn.add_post(101, 1, "Мой первый пост в социальной сети!")
+        post2 = sn.add_post(102, 2, "Прекрасный день для прогулки в парке")
+
+        comment1 = sn.add_comment(1001, 2, 101, "Отличный пост!")
+        comment2 = sn.add_comment(1002, 1, 102, "Согласен, отличная погода!")
+
+        print(f"Создано: {len(sn.users)} пользователей, {len(sn.posts)} постов, {len(sn.comments)} комментариев")
+
+        print("\n=== СОХРАНЕНИЕ И ЗАГРУЗКА ===")
+        # Сохранение
+        SocialNetworkSerializer.save_to_json(sn, "social_network_simple.json")
+        SocialNetworkSerializer.save_to_xml(sn, "social_network_simple.xml")
+
+        # Загрузка
+        sn_loaded = SocialNetworkSerializer.load_from_xml("social_network.xml")
+        print(
+            f"Загружено: {len(sn_loaded.users)} пользователей, {len(sn_loaded.posts)} постов, {len(sn_loaded.comments)} комментариев")
+
+        # Проверка связей
+        user1_loaded = sn_loaded.users[1]
+        post1_loaded = sn_loaded.posts[101]
+        print(f"У пользователя {user1_loaded.username}: {len(user1_loaded.posts)} постов")
+        print(f"У поста {post1_loaded.post_id}: {len(post1_loaded.comments)} комментариев")
+
+        print("\n✅ Всё работает!")
+
+    except Exception as e:
+        print(f"❌ Ошибка: {e}")
+
+
+if __name__ == "__main__":
+    main()
