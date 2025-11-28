@@ -99,7 +99,6 @@ class CurrencyChecker:
         response = requests.get(url)
         response.raise_for_status()
 
-        # Создаем BeautifulSoup объект
         soup = BeautifulSoup(response.content, 'html.parser')
 
         # Удаляем скрипты и стили чтобы получить чистый текст
@@ -111,7 +110,6 @@ class CurrencyChecker:
 
         print(f"📄 Размер текста: {len(page_text)} символов")
 
-        # Ищем валютные суммы в очищенном тексте
         return self.find_currency_amounts(page_text)
 
     def process_file(self, filename):
