@@ -9,13 +9,13 @@ class CurrencyChecker:
         self.currency_pattern = re.compile(
             r'''
             (?:                         # Незахватывающая группа для вариантов
-                (?:USD|EUR|RUB|GBP|JPY|CNY|CHF|CAD|AUD|UAH|KZT|BYN|₽|$|€|£|¥)\s* # Валюта перед суммой
+                (?:USD|EUR|RUB|GBP|JPY|CNY|CHF|CAD|AUD|UAH|KZT|BYN|₽|\$|€|£|¥)\s* # Валюта перед суммой
                 \d{1,3}(?:,\d{3})*     # Целая часть с разделителями тысяч
                 (?:\.\d{1,2})?         # Дробная часть 
             |
                 \d{1,3}(?:,\d{3})*     # Целая часть с разделителями тысяч
                 (?:\.\d{1,2})?         # Дробная часть 
-                \s*(?:USD|EUR|RUB|GBP|JPY|CNY|CHF|CAD|AUD|UAH|KZT|BYN|₽|$|€|£|¥) # Валюта после суммы
+                \s*(?:USD|EUR|RUB|GBP|JPY|CNY|CHF|CAD|AUD|UAH|KZT|BYN|₽|\$|€|£|¥) # Валюта после суммы
             )
             ''',
             re.VERBOSE | re.IGNORECASE
