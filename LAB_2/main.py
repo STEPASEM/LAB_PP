@@ -1,5 +1,7 @@
 import re
 import requests
+from bs4 import BeautifulSoup
+
 
 class CurrencyChecker:
     def __init__(self):
@@ -92,7 +94,25 @@ class CurrencyChecker:
 
     def get_currency_from_url(self, url):
         """Загружает текст с веб-страницы и ищет валютные суммы"""
-        pass
+
+        print(f"🔄 Загружаю страницу: {url}")
+        response = requests.get(url)
+        response.raise_for_status()
+
+        # Создаем BeautifulSoup объект
+        soup = BeautifulSoup(response.content, 'html.parser')
+
+        # Удаляем скрипты и стили чтобы получить чистый текст
+        for script in soup(["script", "style"]):
+            script.decompose()
+
+        # Получаем чистый текст страницы
+        page_text = soup.get_text()
+
+        print(f"📄 Размер текста: {len(page_text)} символов")
+
+        # Ищем валютные суммы в очищенном тексте
+        return self.find_currency_amounts(page_text)
 
     def process_file(self, filename):
         """Читает файл и ищет валютные суммы"""
@@ -108,7 +128,52 @@ class CurrencyChecker:
             return []
 
 def main():
-    pass
+    checker = CurrencyChecker()
+
+    print("=== Проверка и поиск валютных сумм ===")
+    print("Поддерживаемые валюты:", ", ".join(checker.get_supported_currencies()))
+    print("Символы валют: $ (USD), € (EUR), £ (GBP), ¥ (JPY), ₽ (RUB)")
+    print("\nВыберите режим работы:")
+    print("1 - Поиск в тексте")
+    print("2 - Загрузить из файла")
+    print("3 - Загрузить по URL")
+
+    choice = input("Ваш выбор (1-3): ").strip()
+
+    if choice == '1':
+        # Поиск в тексте
+        text = input("Введите текст для поиска: ")
+        amounts = checker.find_currency_amounts(text)
+        if amounts:
+            print("Найденные валютные суммы:")
+            for amount, currency in amounts:
+                print(f"- {amount} {currency}")
+        else:
+            print("Валютные суммы не найдены")
+
+    elif choice == '2':
+        # Загрузка из файла
+        filename = input("Введите имя файла: ")
+        amounts = checker.process_file(filename)
+        if amounts:
+            print("Найденные валютные суммы:")
+            for amount, currency in amounts:
+                print(f"- {amount} {currency}")
+        else:
+            print("Валютные суммы не найдены")
+
+    elif choice == '3':
+        # Загрузка по URL
+        url = input("Введите URL: ")
+        amounts = checker.get_currency_from_url(url)
+        if amounts:
+            print("Найденные валютные суммы:")
+            for amount, currency in amounts:
+                print(f"- {amount} {currency}")
+        else:
+            print("Валютные суммы не найдены")
+    else:
+        print("Неверный выбор")
 
 if __name__ == "__main__":
     main()
