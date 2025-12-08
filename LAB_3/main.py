@@ -1,8 +1,7 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from googletrans import Translator, LANGUAGES
 import pyperclip
-import asyncio
+from deep_translator import GoogleTranslator
 
 from languages_ru import RUSSIAN_LANG_NAMES
 
@@ -10,10 +9,11 @@ class Translators:
     def __init__(self, root):
         self.root = root
         self.root.title("ПЕРЕВОДЧИК")
-        self.root.geometry("600x400")
+        self.root.geometry("600x500")  # Увеличил высоту немного
+        self.root.configure(bg="#f0f0f0")
 
-        self.translator = Translator()
         self.russian_lang_names = RUSSIAN_LANG_NAMES
+        self.auto_translate_timer = None
         self.create_widgets()
 
     def create_widgets(self):
@@ -119,6 +119,8 @@ class Translators:
         )
         input_copy_btn.pack(side="right")
 
+        self.input_text.bind('<KeyRelease>', self.perform_auto_translate)
+
         # Правое поле - вывод перевода
         output_container = tk.Frame(text_frame, bg="white", relief="solid", borderwidth=1)
         output_container.grid(row=0, column=1, padx=(10, 0), sticky="nsew", ipady=5)
@@ -169,20 +171,6 @@ class Translators:
         button_frame = tk.Frame(self.root, bg="#f0f0f0")
         button_frame.pack(pady=20)
 
-        translate_btn = tk.Button(
-            button_frame,
-            text="ПЕРЕВЕСТИ",
-            font=("Arial", 12, "bold"),
-            bg="#2980b9",
-            fg="white",
-            width=15,
-            height=2,
-            command=self.translate_text,
-            relief="flat",
-            cursor="hand2"
-        )
-        translate_btn.pack(side="left", padx=10)
-
         clear_btn = tk.Button(
             button_frame,
             text="ОЧИСТИТЬ",
@@ -197,9 +185,6 @@ class Translators:
         )
         clear_btn.pack(side="left", padx=10)
 
-        # Привязываем Enter к переводу
-        self.root.bind('<Return>', lambda e: self.translate_text())
-
     def get_lang_code(self, russian_name):
         """Получаем код языка по русскому названию"""
         for code, name in self.russian_lang_names.items():
@@ -209,8 +194,10 @@ class Translators:
 
     def translate_text(self):
         text = self.input_text.get("1.0", tk.END).strip()
-        if not text:
-            messagebox.showwarning("Внимание", "Введите текст для перевода")
+        if not text or text.isspace():
+            self.output_text.config(state="normal")
+            self.output_text.delete("1.0", tk.END)
+            self.output_text.config(state="disabled")
             return
 
         try:
@@ -218,38 +205,34 @@ class Translators:
             src_code = self.get_lang_code(self.src_lang.get())
             dest_code = self.get_lang_code(self.dest_lang.get())
 
-            # Выполняем перевод (синхронно)
-            translated = self.translator.translate(text, src=src_code, dest=dest_code)
-
-            # Ждем результат, если это корутина
-            if asyncio.iscoroutine(translated):
-                # Создаем новый event loop для синхронного вызова
-                loop = asyncio.new_event_loop()
-                asyncio.set_event_loop(loop)
-                try:
-                    translated_result = loop.run_until_complete(translated)
-                finally:
-                    loop.close()
-            else:
-                translated_result = translated
+            # Используем GoogleTranslator
+            translated_text = GoogleTranslator(
+                source=src_code,
+                target=dest_code
+            ).translate(text)
 
             # Показываем результат
             self.output_text.config(state="normal")
             self.output_text.delete("1.0", tk.END)
-
-            if hasattr(translated_result, 'text'):
-                self.output_text.insert("1.0", translated_result.text)
-            else:
-                self.output_text.insert("1.0", str(translated_result))
-
-            # Подсветка текста
-            self.output_text.tag_add("translated", "1.0", "end")
-            self.output_text.tag_config("translated", foreground="#2c3e50")
-
+            self.output_text.insert("1.0", translated_text)
             self.output_text.config(state="disabled")
 
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось выполнить перевод: {str(e)}")
+
+    def schedule_auto_translate(self, event=None):
+        """Запланировать автоперевод после паузы ввода"""
+        # Отменяем предыдущий таймер, если он есть
+        if self.auto_translate_timer:
+            self.root.after_cancel(self.auto_translate_timer)
+        self.auto_translate_timer = self.root.after(800, self.perform_auto_translate)
+
+    def perform_auto_translate(self):
+        """Выполнить автоперевод после паузы"""
+        text = self.input_text.get("1.0", tk.END).strip()
+
+        if len(text) >= 1:
+            self.translate_text()
 
     def clear_all(self):
         """Очистить все поля"""
@@ -288,6 +271,32 @@ class Translators:
 
         # Удаляем метку через 2 секунды
         self.root.after(2000, message_label.destroy)
+
+    def swap_languages(self):
+        """Поменять языки местами"""
+        current_src = self.src_lang.get()
+        current_dest = self.dest_lang.get()
+        self.src_lang.set(current_dest)
+        self.dest_lang.set(current_src)
+
+        # Получаем текущий перевод
+        output_text = self.output_text.get("1.0", tk.END).strip()
+
+        # Если есть перевод, перемещаем его в поле ввода
+        if output_text:
+            self.input_text.delete("1.0", tk.END)
+            self.input_text.insert("1.0", output_text)
+
+        # Очищаем поле перевода
+        self.output_text.config(state="normal")
+        self.output_text.delete("1.0", tk.END)
+        self.output_text.config(state="disabled")
+
+        # Проверяем, есть ли теперь текст для перевода
+        current_text = self.input_text.get("1.0", tk.END).strip()
+        if current_text:
+            # Небольшая задержка для стабильности
+            self.root.after(50, self.translate_text)
 
 
 if __name__ == "__main__":
