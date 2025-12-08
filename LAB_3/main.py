@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
 from googletrans import Translator, LANGUAGES
+import pyperclip
+import asyncio
 
 from languages_ru import RUSSIAN_LANG_NAMES
 
@@ -198,7 +200,56 @@ class Translators:
         # Привязываем Enter к переводу
         self.root.bind('<Return>', lambda e: self.translate_text())
 
+    def get_lang_code(self, russian_name):
+        """Получаем код языка по русскому названию"""
+        for code, name in self.russian_lang_names.items():
+            if name == russian_name:
+                return code
+        return 'ru'
 
+    def translate_text(self):
+        text = self.input_text.get("1.0", tk.END).strip()
+        if not text:
+            messagebox.showwarning("Внимание", "Введите текст для перевода")
+            return
+
+        try:
+            # Получаем коды языков
+            src_code = self.get_lang_code(self.src_lang.get())
+            dest_code = self.get_lang_code(self.dest_lang.get())
+
+            # Выполняем перевод (синхронно)
+            translated = self.translator.translate(text, src=src_code, dest=dest_code)
+
+            # Ждем результат, если это корутина
+            if asyncio.iscoroutine(translated):
+                # Создаем новый event loop для синхронного вызова
+                loop = asyncio.new_event_loop()
+                asyncio.set_event_loop(loop)
+                try:
+                    translated_result = loop.run_until_complete(translated)
+                finally:
+                    loop.close()
+            else:
+                translated_result = translated
+
+            # Показываем результат
+            self.output_text.config(state="normal")
+            self.output_text.delete("1.0", tk.END)
+
+            if hasattr(translated_result, 'text'):
+                self.output_text.insert("1.0", translated_result.text)
+            else:
+                self.output_text.insert("1.0", str(translated_result))
+
+            # Подсветка текста
+            self.output_text.tag_add("translated", "1.0", "end")
+            self.output_text.tag_config("translated", foreground="#2c3e50")
+
+            self.output_text.config(state="disabled")
+
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Не удалось выполнить перевод: {str(e)}")
 
 if __name__ == "__main__":
     root = tk.Tk()
@@ -207,7 +258,7 @@ if __name__ == "__main__":
     # Центрируем окно
     root.update_idletasks()
     width = root.winfo_width()
-    height = root.winfo_height()+150
+    height = root.winfo_height()+180
     x = (root.winfo_screenwidth() // 2) - (width // 2)
     y = (root.winfo_screenheight() // 2) - (height // 2)
     root.geometry(f'{width}x{height}+{x}+{y}')
