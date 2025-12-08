@@ -251,6 +251,45 @@ class Translators:
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось выполнить перевод: {str(e)}")
 
+    def clear_all(self):
+        """Очистить все поля"""
+        self.input_text.delete("1.0", tk.END)
+        self.output_text.config(state="normal")
+        self.output_text.delete("1.0", tk.END)
+        self.output_text.config(state="disabled")
+
+    def copy_input_text(self):
+        """Копировать текст из поля ввода"""
+        text = self.input_text.get("1.0", tk.END).strip()
+        if text:
+            pyperclip.copy(text)
+            self.show_copy_message("Текст скопирован в буфер обмена")
+
+    def copy_output_text(self):
+        """Копировать текст из поля перевода"""
+        text = self.output_text.get("1.0", tk.END).strip()
+        if text:
+            pyperclip.copy(text)
+            self.show_copy_message("Перевод скопирован в буфер обмена")
+
+    def show_copy_message(self, message):
+        """Показать всплывающее сообщение о копировании"""
+        # Создаем временную метку
+        message_label = tk.Label(
+            self.root,
+            text=message,
+            font=("Arial", 9),
+            bg="#2ecc71",
+            fg="white",
+            padx=10,
+            pady=5
+        )
+        message_label.place(relx=0.5, rely=0.8, anchor="center")
+
+        # Удаляем метку через 2 секунды
+        self.root.after(2000, message_label.destroy)
+
+
 if __name__ == "__main__":
     root = tk.Tk()
     app = Translators(root)
