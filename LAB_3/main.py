@@ -1,7 +1,9 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
 import pyperclip
+import time
+
 from deep_translator import GoogleTranslator
+from tkinter import ttk, messagebox
 
 from languages_ru import RUSSIAN_LANG_NAMES
 
@@ -14,6 +16,7 @@ class Translators:
 
         self.russian_lang_names = RUSSIAN_LANG_NAMES
         self.auto_translate_timer = None
+        self.last_key_time = 0
         self.create_widgets()
 
     def create_widgets(self):
@@ -67,6 +70,8 @@ class Translators:
         )
         self.dest_lang.grid(row=0, column=4, padx=5)
         self.dest_lang.set('английский')
+        # Связываем изменение языка
+        self.dest_lang.bind('<<ComboboxSelected>>', self.translate_text)
 
         # Фрейм для текстовых полей
         text_frame = tk.Frame(self.root, bg="#f0f0f0")
@@ -104,6 +109,10 @@ class Translators:
         input_scrollbar.pack(side="right", fill="y")
         self.input_text.config(yscrollcommand=input_scrollbar.set)
 
+        # Привязываем обработчики клавиш
+        self.input_text.bind('<KeyPress>', self.on_key_press)
+        self.input_text.bind('<KeyRelease>', self.on_key_release)
+
         input_copy_frame = tk.Frame(input_container, bg="white")
         input_copy_frame.pack(fill="x", padx=10, pady=(0, 5))
 
@@ -118,8 +127,6 @@ class Translators:
             cursor="hand2"
         )
         input_copy_btn.pack(side="right")
-
-        self.input_text.bind('<KeyRelease>', self.perform_auto_translate)
 
         # Правое поле - вывод перевода
         output_container = tk.Frame(text_frame, bg="white", relief="solid", borderwidth=1)
@@ -192,7 +199,7 @@ class Translators:
                 return code
         return 'ru'
 
-    def translate_text(self):
+    def translate_text(self, *args):
         text = self.input_text.get("1.0", tk.END).strip()
         if not text or text.isspace():
             self.output_text.config(state="normal")
@@ -220,19 +227,50 @@ class Translators:
         except Exception as e:
             messagebox.showerror("Ошибка", f"Не удалось выполнить перевод: {str(e)}")
 
-    def schedule_auto_translate(self, event=None):
-        """Запланировать автоперевод после паузы ввода"""
-        # Отменяем предыдущий таймер, если он есть
+    def on_key_press(self, event):
+        """Обработка нажатия клавиши"""
+        # Обновляем время последнего нажатия
+        self.last_key_time = time.time()
+
+        # Отменяем таймер паузы
         if self.auto_translate_timer:
             self.root.after_cancel(self.auto_translate_timer)
-        self.auto_translate_timer = self.root.after(800, self.perform_auto_translate)
+            self.auto_translate_timer = None
 
-    def perform_auto_translate(self):
-        """Выполнить автоперевод после паузы"""
+    def on_key_release(self, event):
+        """Обработка отпускания клавиши"""
+        # Если нажат пробел - переводим сразу
+        if event.keysym == 'space' or event.char == ' ':
+            # Ждем 50ms чтобы пробел успел добавиться
+            self.root.after(50, self.delayed_translate_on_space)
+            return
+
+        # Для других клавиш - запускаем таймер на 1 секунду
+        if self.auto_translate_timer:
+            self.root.after_cancel(self.auto_translate_timer)
+
+        # Запускаем таймер на проверку паузы
+        self.auto_translate_timer = self.root.after(1000, self.check_pause_and_translate)
+
+    def delayed_translate_on_space(self):
+        """Отложенный перевод после пробела"""
         text = self.input_text.get("1.0", tk.END).strip()
-
-        if len(text) >= 1:
+        if text and len(text) >= 3:  # Хотя бы 3 символа
             self.translate_text()
+
+    def check_pause_and_translate(self):
+        """Проверить паузу и перевести если нужно"""
+        current_time = time.time()
+        time_since_last_key = current_time - self.last_key_time
+
+        # Если прошло больше 1 секунд с последнего нажатия
+        if time_since_last_key >= 1.0:
+            text = self.input_text.get("1.0", tk.END).strip()
+            if text and text[-1] != ' ':
+                self.translate_text()
+
+        # Сбрасываем таймер
+        self.auto_translate_timer = None
 
     def clear_all(self):
         """Очистить все поля"""
