@@ -148,21 +148,26 @@ async def movie_detail_handler(callback: CallbackQuery):
 
     # Получаем название и ссылку
     movie_title = movie_titles[movie_idx]
-    movie_link = movies_cache[movie_title]
+    movie_link = movies_cache[movie_title][0]
+    movie_info = movies_cache[movie_title][1]
+    movie_genres = movies_cache[movie_title][2]
+    movie_time_location = movies_cache[movie_title][3]
 
     # Создаем клавиатуру для возврата
     keyboard = InlineKeyboardMarkup(
         inline_keyboard=[
             [
                 InlineKeyboardButton(text="🔙 Назад к списку", callback_data="back_to_list"),
-                InlineKeyboardButton(text="🌐 Открыть на сайте", url=movie_link)
+                InlineKeyboardButton(text="🌐 Купить билет", url=movie_link)
             ]
         ]
     )
 
     await callback.message.edit_text(
         f"<b>🎬 {movie_title}</b>\n\n"
-        f"<b>Ссылка:</b> {movie_link}\n\n"
+        f"<b>Жанры:</b> {movie_genres}\n"
+        f"<b>Время и место:</b> {movie_time_location}\n\n"
+        f"<b>Описание:</b> {movie_info}\n\n"
         f"<i>Нажмите кнопку ниже чтобы открыть страницу с расписанием сеансов.</i>",
         reply_markup=keyboard,
         parse_mode=ParseMode.HTML
