@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 
 class Parser:
     def __init__(self):
-        self.data_film = []
+        self.data_film = {}
         self.url_film = "https://msk.kinoafisha.info/"
 
     async def parse_film(self):
@@ -18,6 +18,6 @@ class Parser:
         for movie in movies:
             title_elem = movie.find('a', class_='movieItem_title')
             if title_elem:
-                self.data_film.append(title_elem.text.strip())
+                self.data_film[title_elem.text.strip()] = title_elem.get('href')
 
         return self.data_film
