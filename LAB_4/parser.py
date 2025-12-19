@@ -1,7 +1,5 @@
 import requests
-import asyncio
 from bs4 import BeautifulSoup
-from httpx import delete
 
 
 class Parser:
