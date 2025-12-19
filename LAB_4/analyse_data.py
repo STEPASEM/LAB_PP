@@ -42,7 +42,7 @@ yearly_stats = yearly_stats.rename(columns={'Title': 'Movies_Count'})
 
 # ВИЗУАЛИЗАЦИЯ
 fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(14, 10))
-fig.suptitle('Анализ фильмов по годам выпуска (за 15 лет)',
+fig.suptitle('Анализ фильмов по годам выпуска (за 14 лет)',
              fontsize=18, fontweight='bold')
 
 # График 1: Средний рейтинг и количество фильмов по годам
@@ -82,7 +82,31 @@ lines1, labels1 = ax1.get_legend_handles_labels()
 lines2, labels2 = ax1_bar.get_legend_handles_labels()
 ax1.legend(lines1 + lines2, labels1 + labels2, loc='upper left', fontsize=10)
 
+# График 2: Популярность и количество голосов
+ax2.plot(years, yearly_stats['Popularity'], marker='s', linewidth=2.5,
+         color='darkred', markersize=8, label='Средняя популярность')
+
+ax2_bar = ax2.twinx()
+ax2_bar.bar(years, yearly_stats['Vote_Count']/100, alpha=0.4,
+            color='orange', label='Средние голоса (×100)')
+
+ax2.set_xlabel('Год выпуска', fontsize=12, fontweight='bold')
+ax2.set_ylabel('Популярность', fontsize=12, fontweight='bold', color='darkred')
+ax2_bar.set_ylabel('Количество голосов (×100)', fontsize=12, fontweight='bold', color='orange')
+ax2.grid(True, alpha=0.3, linestyle=':')
+
+# Линия тренда для популярности
+z_pop = np.polyfit(years, yearly_stats['Popularity'], 1)
+p_pop = np.poly1d(z_pop)
+ax2.plot(years_smooth, p_pop(years_smooth), "r--", alpha=0.7, linewidth=2,
+         label=f'Тренд: {z_pop[0]:.1f}/год')
+
+# Объединение легенд для второго графика
+lines3, labels3 = ax2.get_legend_handles_labels()
+lines4, labels4 = ax2_bar.get_legend_handles_labels()
+ax2.legend(lines3 + lines4, labels3 + labels4, loc='upper left', fontsize=10)
+
 plt.tight_layout()
-plt.savefig('movies_popularity_analysis.png', dpi=300, bbox_inches='tight')
-print("\nВизуализация сохранена как 'movies_popularity_analysis.png'")
+plt.savefig('movies_analysis_corrected.png', dpi=300, bbox_inches='tight')
+print("\nВизуализация сохранена как 'movies_analysis_corrected.png'")
 plt.show()
