@@ -110,3 +110,53 @@ plt.tight_layout()
 plt.savefig('movies_analysis_corrected.png', dpi=300, bbox_inches='tight')
 print("\nВизуализация сохранена как 'movies_analysis_corrected.png'")
 plt.show()
+
+# Формулировка гипотезы
+print("\nГИПОТЕЗА:")
+print("Средний рейтинг фильмов меняется с годами.")
+print("Чем новее фильм, тем выше его рейтинг.")
+
+# Расчет корреляции между годом и рейтингом
+corr = yearly_stats['Release_Year'].corr(yearly_stats['Vote_Average'])
+
+print(f"\nКоэффициент корреляции: r = {corr:.4f}")
+
+# Простая оценка силы связи
+if abs(corr) > 0.7:
+    print("Сильная связь")
+elif abs(corr) > 0.5:
+    print("Умеренная связь")
+elif abs(corr) > 0.3:
+    print("Слабая связь")
+else:
+    print("Очень слабая связь")
+
+# Проверка статистической значимости (перестановочный тест)
+print("\nПроверка значимости (10,000 тестов):")
+
+years = yearly_stats['Release_Year'].values
+ratings = yearly_stats['Vote_Average'].values
+
+# Генерируем случайные корреляции
+random_corrs = []
+for i in range(10000):
+    shuffled = np.random.permutation(ratings)
+    random_corrs.append(np.corrcoef(years, shuffled)[0, 1])
+
+# Считаем p-value: как часто случайная корреляция ≥ нашей
+p_value = np.mean(random_corrs >= corr)
+
+print(f"Вероятность случайного результата: p = {p_value:.5f}")
+
+# Вывод результата
+print("\nРЕЗУЛЬТАТ:")
+if p_value < 0.05:
+    print("✓ Гипотеза ПОДТВЕРЖДЕНА")
+    print(f"  Связь статистически значима (p < 0.05)")
+    if corr > 0:
+        print("  Рейтинги действительно растут с годами")
+    else:
+        print("  Рейтинги снижаются с годами")
+else:
+    print("✗ Гипотеза НЕ ПОДТВЕРЖДЕНА")
+    print(f"  Связь не является статистически значимой")
