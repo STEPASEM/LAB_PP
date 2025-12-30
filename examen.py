@@ -148,7 +148,7 @@ def handle_click(x, y):
             generate_password()
 
     # Поле длины (цифра)
-    elif -100 < x < -80 and -50 < y < -40:
+    elif -100 < x < -60 and -55 < y < -35:
         # Запрашиваем новую длину
         new_len = screen.textinput("Длина пароля", f"Введите длину (4-20):\nТекущая: {password_length}")
         if new_len and new_len.isdigit():
@@ -157,13 +157,13 @@ def handle_click(x, y):
                 password_length = length
                 # Обновляем отображение длины
                 t.penup()
-                t.goto(-100, -50)
+                t.goto(-100, -55)  # Начинаем левее и ниже
                 t.fillcolor("white")
                 t.begin_fill()
                 for _ in range(2):
-                    t.forward(30)
+                    t.forward(50)  # Шире!
                     t.right(90)
-                    t.forward(20)
+                    t.forward(25)  # Выше!
                     t.right(90)
                 t.end_fill()
                 t.penup()
