@@ -111,7 +111,7 @@ def generate_password():
 
     # Удаляем старый пароль
     t.penup()
-    t.goto(-149, 80)  # Внутри рамки
+    t.goto(-149, 99)  # Внутри рамки
     t.pendown()
     t.fillcolor("white")
     t.begin_fill()
@@ -124,7 +124,7 @@ def generate_password():
 
     # Пишем новый пароль по центру
     t.penup()
-    t.goto(-140, 80)  # Выше, чтобы было по центру рамки
+    t.goto(-140, 75)  # Выше, чтобы было по центру рамки
     t.write(password, font=("Arial", 12))
 
 
